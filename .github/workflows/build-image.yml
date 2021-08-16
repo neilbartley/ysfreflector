@@ -1,0 +1,53 @@
+name: Build image
+
+on: push
+
+jobs:
+  build_and_push:
+    name: Build and push YSFReflector Docker image
+    runs-on: ubuntu-latest
+    
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            neilbartley/ysfreflector
+            ghcr.io/neilbartley/ysfreflector
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Docker image timestamp tag
+        id: image-tag
+        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: |
+            neilbartley/ysfreflector:latest
+            neilbartley/ysfreflector:${{ steps.image-tag.outputs.timestamp }}
+            ghcr.io/neilbartley/ysfreflector:latest
+            ghcr.io/neilbartley/ysfreflector:${{ steps.image-tag.outputs.timestamp }}
+          labels: ${{ steps.meta.outputs.labels }}
